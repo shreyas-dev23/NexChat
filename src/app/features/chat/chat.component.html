@@ -1,0 +1,746 @@
+<!-- src/app/chat/chat.component.html -->
+
+<div class="chat-container">
+
+  <!-- ══════════════════════════════════════════
+       🔴 CONNECTION BANNER
+       ══════════════════════════════════════════ -->
+  <div class="connection-banner reconnecting" *ngIf="connectionState === 'reconnecting'">
+    <lucide-icon name="alert-circle" [size]="16"></lucide-icon>
+    Reconnecting to server...
+  </div>
+
+  <div class="connection-banner disconnected" *ngIf="connectionState === 'disconnected'">
+    <lucide-icon name="wifi-off" [size]="16"></lucide-icon>
+    Disconnected — Messages won't be delivered
+  </div>
+
+  <div class="chat-layout">
+
+    <!-- ══════════════════════════════════════════
+         👥 LEFT PANEL — Sidebar
+         ══════════════════════════════════════════ -->
+    <aside class="sidebar" [class.hide-mobile]="!!selectedItem">
+
+
+      <!-- ══ SIDEBAR HEADER — Add [+] button ══ -->
+      <div class="sidebar-header">
+        <h3>Chats</h3>
+        <div class="sidebar-header-actions">
+          <button class="btn-icon" (click)="openCreateGroupModal()" title="Create new group">
+            <lucide-icon name="users" [size]="20"></lucide-icon>
+          </button>
+
+          <button class="btn-icon" (click)="loadAllUsers()" title="New Chat">
+            <lucide-icon name="plus" [size]="20"></lucide-icon>
+          </button>
+
+
+          <span class="status-dot" [class.online]="connectionState === 'connected'"
+            [class.reconnecting]="connectionState === 'reconnecting'"
+            [class.offline]="connectionState === 'disconnected'">
+          </span>
+
+        </div>
+      </div>
+
+      <!-- ══ NEW CHAT PANEL (Overlay on sidebar) ══ -->
+      <div class="new-chat-panel" *ngIf="showAllUsers">
+
+        <!-- Header -->
+        <div class="new-chat-header">
+          <button class="btn-back" (click)="showAllUsers = false">
+            <lucide-icon name="chevron-left" [size]="24"></lucide-icon>
+          </button>
+          <h3>New Chat</h3>
+        </div>
+
+        <!-- Search -->
+        <div class="new-chat-search">
+          <div class="search-input-wrapper">
+            <lucide-icon name="search" [size]="18"></lucide-icon>
+            <input type="text" placeholder="Search users..." [(ngModel)]="searchQuery" autocomplete="off" />
+          </div>
+        </div>
+
+        <!-- User List -->
+        <div class="new-chat-list">
+
+          <!-- Loading -->
+          <div *ngIf="isLoadingUsers" class="loading-state">
+            <span class="spinner"></span>
+            Loading users...
+          </div>
+
+          <!-- Empty -->
+          <div *ngIf="!isLoadingUsers && filteredUsers.length === 0" class="empty-state">
+            <lucide-icon name="users" [size]="32"></lucide-icon>
+            <p>No users found</p>
+          </div>
+
+          <!-- Users -->
+          <div *ngFor="let user of filteredUsers" class="user-item" (click)="startChat(user)">
+
+            <div class="avatar-wrapper">
+              <div class="avatar">
+                {{ user.username.charAt(0) | uppercase }}
+              </div>
+              <span class="online-dot" [class.online]="user.isOnline" [class.offline]="!user.isOnline">
+              </span>
+            </div>
+
+            <div class="user-info">
+              <div class="user-name">{{ user.username }}</div>
+              <div class="last-message">
+                {{ user.isOnline ? 'Online' : 'Offline' }}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <!-- Sidebar List -->
+      <div class="sidebar-list">
+
+        <!-- Loading -->
+        <div *ngIf="isLoadingConversations" class="loading-state">
+          <span class="spinner"></span>
+          Loading conversations...
+        </div>
+
+        <!-- Empty -->
+        <div *ngIf="!isLoadingConversations && conversations.length === 0" class="empty-state">
+          <lucide-icon name="search" [size]="32"></lucide-icon>
+          <p>No conversations yet</p>
+          <small>Start chatting with someone!</small>
+        </div>
+
+        <!-- Conversation List -->
+        <!-- <div *ngFor="let user of conversations; trackBy: trackByConversation" class="user-item"
+          [class.active]="isSelected(user)" (click)="selectUser(user)">
+
+          <div class="avatar-wrapper">
+            <div class="avatar">
+              {{ user.username.charAt(0) | uppercase }}
+            </div>
+            <span class="online-dot" [class.online]="user.isOnline" [class.offline]="!user.isOnline">
+            </span>
+          </div>
+
+          <div class="user-info">
+            <div class="user-name">{{ user.username }}</div>
+            <div class="last-message">
+              <span *ngIf="user.isTyping" class="typing-text">
+                typing...
+              </span>
+              <span *ngIf="!user.isTyping">
+                {{ user.lastMessage }}
+              </span>
+            </div>
+          </div>
+
+          <span *ngIf="user.unreadCount > 0" class="unread-badge">
+            {{ user.unreadCount > 99 ? '99+' : user.unreadCount }}
+          </span>
+        </div> -->
+        <div *ngFor="let item of sidebarItems;trackBy:trackBySidebarItem" (click)="selectItem(item)"
+          [class.active]="selectedItem?.id === item.id" class="user-item">
+          <div class="avatar-wrapper">
+            <ng-container *ngIf="item.type==='user'">
+              <div class="avatar">
+                {{item.name.charAt(0) |uppercase}}
+              </div>
+              <span class="online-dot" [class.online]="item.isOnline" [class.offline]="!item.isOnline"></span>
+            </ng-container>
+            <ng-container *ngIf="item.type==='group'">
+              <div class="avatar group-avatar">👥</div>
+            </ng-container>
+          </div>
+          <div class="user-info">
+            <div class="username">
+              {{item.name}}
+            </div>
+            <span class="member-count" *ngIf="item.type==='group'">
+              {{item.memberCount}}
+            </span>
+          </div>
+          <div class="last-message">
+            <span *ngIf="item.isTyping" class="typing-text">
+              ✍️ typing...
+            </span>
+            <span *ngIf="!item.isTyping">
+              {{item.lastMessage}}
+            </span>
+          </div>
+          <span *ngIf="item.unreadCount>0" class="unread-badge">
+            {{item.unreadCount>99?'99+':item.unreadCount}}
+          </span>
+
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ══════════════════════════════════════════
+         💬 RIGHT PANEL — Chat Window
+         ══════════════════════════════════════════ -->
+    <main class="chat-window" [class.active]="!!selectedItem">
+
+      <!-- No Selection -->
+      <div *ngIf="!selectedItem" class="no-selection">
+        <lucide-icon name="message-circle" [size]="80" class="no-selection-icon"></lucide-icon>
+        <h3>Select a conversation</h3>
+        <small>Choose a contact from the sidebar to start chatting</small>
+      </div>
+
+      <!-- Active Chat -->
+      <ng-container *ngIf="selectedItem">
+
+        <!-- ── Chat Header ── -->
+        <div class="chat-header" *ngIf="selectedItem">
+          <div class="header-left">
+            <button class="btn-back" (click)="goBack()">
+              <lucide-icon name="chevron-left" [size]="24"></lucide-icon>
+            </button>
+            <div class="avatar-wrapper">
+              <div class="avatar small" *ngIf="selectedItem.type === 'user'">
+                {{ selectedUser?.username?.charAt(0) | uppercase }}
+              </div>
+              <div class="avatar small group-avatar" *ngIf="selectedItem.type === 'group'">
+                👥
+              </div>
+              <span *ngIf="selectedItem.type === 'user'" class="online-dot" [class.online]="selectedUser?.isOnline"
+                [class.offline]="!selectedUser?.isOnline">
+              </span>
+            </div>
+            <div class="header-info">
+              <strong *ngIf="selectedItem?.type ==='user'">{{ selectedItem.name }}</strong>
+
+              <button *ngIf="selectedItem?.type ==='group'" class="group-header-btn" (click)="openGroupInfoPanel()">
+                <strong>{{selectedItem.name}}</strong>
+                <lucide-icon name="chevron-right" [size]="16"></lucide-icon>
+              </button>
+
+
+              <small class="header-status">
+                <span *ngIf="selectedItem.type === 'user' && selectedUser?.isTyping" class="typing-text">
+                  typing...
+                </span>
+                <ng-container *ngIf="selectedItem.type === 'user' && !selectedUser?.isTyping">
+                  <span *ngIf="selectedUser?.isOnline" class="status-online">
+                    Online
+                  </span>
+
+                  <span *ngIf="!selectedUser?.isOnline
+                              && lastSeenDisplay" class="status-last-seen">
+                    {{ lastSeenDisplay }}
+                  </span>
+
+                  <!-- Priority 4: Offline (fallback) -->
+                  <span *ngIf="!selectedUser?.isOnline
+                              && !lastSeenDisplay" class="status-offline">
+                    Offline
+                  </span>
+                </ng-container>
+
+                <ng-container *ngIf="selectedItem?.type === 'group'">
+                  <span class="status-group-info">
+
+                    <lucide-icon name="users" [size]="13"></lucide-icon>
+                    {{ selectedItem?.memberCount }} members
+                  </span>
+                </ng-container>
+              </small>
+            </div>
+          </div>
+
+          <!-- Header Actions -->
+          <div class="header-actions">
+
+            <button *ngIf="selectedItem?.type==='group'" class="btn-icon" (click)="openAddMembersModal()"
+              title="Add members">
+              <lucide-icon name="user-plus" [size]="20"></lucide-icon>
+            </button>
+
+
+            <button class="btn-icon" title="Voice Call">
+              <lucide-icon name="phone" [size]="20"></lucide-icon>
+            </button>
+            <button class="btn-icon" title="Video Call">
+              <lucide-icon name="video" [size]="20"></lucide-icon>
+            </button>
+            <button class="btn-icon" title="More Options">
+              <lucide-icon name="more-vertical" [size]="20"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Error Alert ── -->
+        <div *ngIf="errorMessage" class="error-alert">
+          <span class="d-flex flex-center gap-xs">
+            <lucide-icon name="alert-circle" [size]="16"></lucide-icon>
+            {{ errorMessage }}
+          </span>
+          <button class="dismiss-btn" (click)="errorMessage = ''">
+            <lucide-icon name="x" [size]="18"></lucide-icon>
+          </button>
+        </div>
+
+        <!-- ── Loading History ── -->
+        <div *ngIf="isLoadingHistory" class="loading-state center">
+          <span class="spinner"></span>
+          Loading messages...
+        </div>
+
+        <!-- ── Messages Area ── -->
+        <div class="messages" #messageContainer *ngIf="!isLoadingHistory">
+
+          <!-- Empty Chat -->
+          <div *ngIf="messages.length === 0" class="empty-state center">
+            <lucide-icon name="message-square" [size]="48"></lucide-icon>
+            <p>No messages yet</p>
+            <small>Say hello!</small>
+          </div>
+
+          <!-- Message Bubbles -->
+          <!-- ✅ Use ng-container to group separator + bubble -->
+          <ng-container *ngFor="let msg of messages; trackBy: trackByMessage">
+
+            <!-- ✅ Date Separator — OUTSIDE message-row -->
+            <div class="date-separator" *ngIf="msg.showDateSeparator">
+              <div class="date-separator-line"></div>
+              <span class="date-separator-label">
+                {{ msg.dateSeparatorLabel }}
+              </span>
+              <div class="date-separator-line"></div>
+            </div>
+
+            <!-- ✅ Message Row — Separate from separator -->
+            <div class="message-row" [class.sent]="msg.isMine" [class.received]="!msg.isMine">
+
+              <div class="message-bubble" [class.sent-bubble]="msg.isMine" [class.received-bubble]="!msg.isMine"
+                [class.failed]="msg.status === 'failed'">
+
+                <div class="bubble-content">{{ msg.content }}</div>
+
+                <div class="bubble-footer">
+                  <span class="bubble-time">
+                    {{ msg.sentAt | date:'shortTime' }}
+                  </span>
+
+                  <ng-container *ngIf="msg.isMine">
+                    <span *ngIf="msg.status === 'sending'" class="msg-status sending" title="Sending">
+                      <lucide-icon name="clock" [size]="12"></lucide-icon>
+                    </span>
+                    <span *ngIf="msg.status === 'sent'" class="msg-status sent" title="Sent">
+                      <lucide-icon name="check" [size]="14"></lucide-icon>
+                    </span>
+                    <span *ngIf="msg.isRead || msg.status === 'read'" class="msg-status read" title="Read">
+                      <lucide-icon name="check-check" [size]="14"></lucide-icon>
+                    </span>
+                    <span *ngIf="msg.status === 'failed'" class="msg-status failed" title="Failed — click to retry"
+                      (click)="retryMessage(msg)">
+                      <lucide-icon name="alert-circle" [size]="12"></lucide-icon>
+                      Retry
+                    </span>
+                  </ng-container>
+                </div>
+              </div>
+            </div>
+
+          </ng-container>
+
+          <!-- Typing Indicator -->
+          <div class="typing-indicator-bubble" *ngIf="selectedUser?.isTyping">
+            <div class="dot-flashing">
+              <span></span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Input Bar ── -->
+        <div class="input-bar">
+          <!-- Attachment Button -->
+          <button class="btn-icon" title="Attach file">
+            <lucide-icon name="plus" [size]="22"></lucide-icon>
+          </button>
+
+          <input #messageInput [(ngModel)]="newMessage" placeholder="Type a message..." (keyup)="onInputKeyup($event)"
+            (ngModelChange)="onInputChange()" [disabled]="connectionState !== 'connected'" [maxlength]="4000"
+            autocomplete="off" />
+
+          <!-- Send Button -->
+          <button class="send-btn" (click)="send()"
+            [disabled]="!newMessage.trim() || isSending || connectionState !== 'connected'" title="Send message">
+            <lucide-icon *ngIf="!isSending" name="send" [size]="20"></lucide-icon>
+            <span *ngIf="isSending" class="spinner"></span>
+          </button>
+        </div>
+
+      </ng-container>
+    </main>
+
+
+
+    <aside class="group-info-panel" [class.visible]="showGroupInfoPanel">
+
+      <!-- Panel Header -->
+      <div class="panel-header">
+        <button class="btn-back" (click)="closeGroupInfoPanel()">
+          <lucide-icon name="chevron-left" [size]="24"></lucide-icon>
+        </button>
+        <h3>Group Info</h3>
+      </div>
+
+      <div class="panel-content">
+
+        <!-- Group Avatar & Name -->
+        <div class="group-profile">
+          <div class="group-avatar-large">
+            <lucide-icon name="users" [size]="48"></lucide-icon>
+          </div>
+          <h2>{{ selectedItem?.name }}</h2>
+          <p class="group-member-count">
+            {{ selectedItem?.memberCount }} members
+          </p>
+        </div>
+
+        <!-- Divider -->
+        <div class="panel-divider"></div>
+
+        <!-- Members Section -->
+        <div class="panel-section">
+          <div class="section-header">
+            <h4>
+              <lucide-icon name="users" [size]="18"></lucide-icon>
+              MEMBERS
+            </h4>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="isLoadingMembers" class="loading-state">
+            <span class="spinner"></span>
+            Loading members...
+          </div>
+
+          <!-- Member List -->
+          <div class="member-list-panel" *ngIf="!isLoadingMembers">
+
+            <div *ngFor="let member of groupMembers" class="member-item-panel">
+
+              <!-- Avatar -->
+              <div class="avatar-wrapper">
+                <div class="avatar">
+                  {{ member.username.charAt(0) | uppercase }}
+                </div>
+                <span class="online-dot" [class.online]="member.isOnline" [class.offline]="!member.isOnline">
+                </span>
+              </div>
+
+              <!-- Info -->
+              <div class="member-info-panel">
+                <div class="member-name-row">
+                  <span class="member-name">
+                    {{ member.username }}
+                    <span *ngIf="member.userId === currentUserId" class="you-tag">
+                      (You)
+                    </span>
+                  </span>
+                  <lucide-icon *ngIf="member.isAdmin" name="shield" [size]="14" class="admin-icon" title="Admin">
+                  </lucide-icon>
+                </div>
+
+                <!-- Status -->
+                <div class="member-status">
+                  <span *ngIf="member.isOnline" class="status-online">
+                    Online
+                  </span>
+                  <span *ngIf="!member.isOnline && member.lastSeenAt" class="status-last-seen">
+                    {{ dateHelper.formatLastSeen(member.lastSeenAt) }}
+                  </span>
+                  <span *ngIf="!member.isOnline && !member.lastSeenAt" class="status-offline">
+                    Offline
+                  </span>
+                </div>
+              </div>
+
+              <!-- Remove Button (Admin Only) -->
+              <button *ngIf="currentUserIsAdmin
+                   && member.userId !== currentUserId" class="btn-remove-member" (click)="removeMember(member)"
+                title="Remove member">
+                <lucide-icon name="user-minus" [size]="16"></lucide-icon>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Add Members Button -->
+          <button class="btn-add-members-panel" (click)="openAddMembersModal(); closeGroupInfoPanel()">
+            <lucide-icon name="user-plus" [size]="18"></lucide-icon>
+            Add Members
+          </button>
+        </div>
+
+        <!-- Divider -->
+        <div class="panel-divider"></div>
+
+        <!-- Actions Section -->
+        <div class="panel-section">
+          <h4 class="section-header">
+            <lucide-icon name="settings" [size]="18"></lucide-icon>
+            ACTIONS
+          </h4>
+
+          <!-- Leave Group -->
+          <button class="panel-action-btn danger" (click)="leaveGroup()">
+            <lucide-icon name="log-out" [size]="18"></lucide-icon>
+            Leave Group
+          </button>
+
+          <!-- Delete Group (Admin Only) -->
+          <button *ngIf="currentUserIsAdmin" class="panel-action-btn danger" (click)="deleteGroup()">
+            <lucide-icon name="trash-2" [size]="18"></lucide-icon>
+            Delete Group
+          </button>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Overlay (darken background when panel is open) -->
+    <div class="panel-overlay" *ngIf="showGroupInfoPanel" (click)="closeGroupInfoPanel()">
+    </div>
+  </div>
+</div>
+
+
+
+<div class="modal-backdrop" *ngIf="showCreateGroupModal" (click)="closeCreateGroupModal()">
+
+  <div class="modal-box" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3>New Group</h3>
+      <button class="btn-icon" (click)="closeCreateGroupModal()">
+        <lucide-icon name="x" [size]="20"></lucide-icon>
+      </button>
+    </div>
+
+    <div class="error-alert" *ngIf="createGroupError">
+      <span class="d-flex flex-center gap-xs">
+        <lucide-icon name="alert-circle" [size]="16"></lucide-icon>
+        {{ createGroupError }}
+      </span>
+    </div>
+
+
+    <div class="modal-section">
+      <label class="modal-label">Group Name</label>
+      <div class="modal-input-wrapper">
+        <input class="modal-input" type="text" placeholder="Enter group name..." [(ngModel)]="newGroupName"
+          [maxlength]="100" (keyup.enter)="createGroup()" autofocus />
+        <span class="char-count" *ngIf="newGroupName.length > 0">
+          {{ newGroupName.length }}/100
+        </span>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <label class="modal-label">Add Members</label>
+      <div class="search-input-wrapper">
+        <lucide-icon name="search" [size]="16"></lucide-icon>
+        <input type="text" placeholder="Search people..." [(ngModel)]="memberSearchQuery" (input)="onMemberSearch()"
+          autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="selected-preview" *ngIf="selectedMembers.length > 0">
+      <span class="selected-label">
+        Selected ({{ selectedMembers.length }})
+      </span>
+      <div class="selected-chips">
+        <span *ngFor="let member of selectedMembers" class="member-chip" (click)="toggleMember(member)">
+          {{ member.username }}
+          <lucide-icon name="x" [size]="12"></lucide-icon>
+        </span>
+      </div>
+    </div>
+
+
+    <div class="member-list">
+
+
+      <div class="empty-state" *ngIf="filteredSelectableUsers.length === 0">
+        <lucide-icon name="users" [size]="28"></lucide-icon>
+        <p>No users found</p>
+      </div>
+
+
+      <div *ngFor="let user of filteredSelectableUsers" class="member-row" [class.selected]="user.selected"
+        (click)="toggleMember(user)">
+
+
+        <div class="member-checkbox" [class.checked]="user.selected">
+          <lucide-icon *ngIf="user.selected" name="check" [size]="14"></lucide-icon>
+        </div>
+
+        <div class="avatar-wrapper">
+          <div class="avatar">
+            {{ user.username.charAt(0) | uppercase }}
+          </div>
+          <span class="online-dot" [class.online]="user.isOnline" [class.offline]="!user.isOnline">
+          </span>
+        </div>
+
+        <div class="user-info">
+          <div class="user-name">{{ user.username }}</div>
+          <div class="last-message">
+            <span *ngIf="user.isOnline" class="status-online">Online</span>
+            <span *ngIf="!user.isOnline" class="status-offline">Offline</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeCreateGroupModal()" [disabled]="isCreatingGroup">
+        Cancel
+      </button>
+
+      <button class="btn-create" (click)="createGroup()" [disabled]="!newGroupName.trim()
+                    || selectedMembers.length === 0
+                    || isCreatingGroup">
+        <span *ngIf="!isCreatingGroup" class="d-flex flex-center gap-xs">
+          <lucide-icon name="users" [size]="16"></lucide-icon>
+          Create Group
+        </span>
+        <span *ngIf="isCreatingGroup" class="d-flex flex-center gap-xs">
+          <span class="spinner"></span>
+          Creating...
+        </span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+
+<div class="modal-backdrop" *ngIf="showAddMembersModal" (click)="closeAddMembersModal()">
+
+  <div class="modal-box" (click)="$event.stopPropagation()">
+
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h3>
+        <lucide-icon name="user-plus" [size]="20"></lucide-icon>
+        Add Members
+      </h3>
+      <button class="btn-icon" (click)="closeAddMembersModal()">
+        <lucide-icon name="x" [size]="20"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Group Name (Read-only) -->
+    <div class="modal-section">
+      <label class="modal-label">Adding to</label>
+      <div class="group-name-display">
+        <lucide-icon name="users" [size]="16"></lucide-icon>
+        {{ addMembersGroupName }}
+      </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div class="error-alert" *ngIf="addMembersError">
+      <span class="d-flex flex-center gap-xs">
+        <lucide-icon name="alert-circle" [size]="16"></lucide-icon>
+        {{ addMembersError }}
+      </span>
+    </div>
+
+    <!-- Member Search -->
+    <div class="modal-section">
+      <label class="modal-label">Select People</label>
+      <div class="search-input-wrapper">
+        <lucide-icon name="search" [size]="16"></lucide-icon>
+        <input type="text" placeholder="Search people..." [(ngModel)]="memberSearchQuery" (input)="onMemberSearch()"
+          autocomplete="off" />
+      </div>
+    </div>
+
+    <!-- Selected Members Preview -->
+    <div class="selected-preview" *ngIf="selectedMembers.length > 0">
+      <span class="selected-label">
+        Selected ({{ selectedMembers.length }})
+      </span>
+      <div class="selected-chips">
+        <span *ngFor="let member of selectedMembers" class="member-chip" (click)="toggleMember(member)">
+          {{ member.username }}
+          <lucide-icon name="x" [size]="12"></lucide-icon>
+        </span>
+      </div>
+    </div>
+
+    <!-- Member List -->
+    <div class="member-list">
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="filteredSelectableUsers.length === 0">
+        <lucide-icon name="users" [size]="28"></lucide-icon>
+        <p>No users to add</p>
+        <small>All your contacts are already members</small>
+      </div>
+
+      <!-- User Rows -->
+      <div *ngFor="let user of filteredSelectableUsers" class="member-row" [class.selected]="user.selected"
+        (click)="toggleMember(user)">
+
+        <!-- Checkbox -->
+        <div class="member-checkbox" [class.checked]="user.selected">
+          <lucide-icon *ngIf="user.selected" name="check" [size]="14"></lucide-icon>
+        </div>
+
+        <!-- Avatar -->
+        <div class="avatar-wrapper">
+          <div class="avatar">
+            {{ user.username.charAt(0) | uppercase }}
+          </div>
+          <span class="online-dot" [class.online]="user.isOnline" [class.offline]="!user.isOnline">
+          </span>
+        </div>
+
+        <!-- Info -->
+        <div class="user-info">
+          <div class="user-name">{{ user.username }}</div>
+          <div class="last-message">
+            <span *ngIf="user.isOnline" class="status-online">Online</span>
+            <span *ngIf="!user.isOnline" class="status-offline">Offline</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closeAddMembersModal()" [disabled]="isAddingMembers">
+        Cancel
+      </button>
+
+      <button class="btn-create" (click)="addMembersToGroup()"
+        [disabled]="selectedMembers.length === 0 || isAddingMembers">
+        <span *ngIf="!isAddingMembers" class="d-flex flex-center gap-xs">
+          <lucide-icon name="user-plus" [size]="16"></lucide-icon>
+          Add {{ selectedMembers.length > 0 ? '(' + selectedMembers.length + ')' : '' }}
+        </span>
+        <span *ngIf="isAddingMembers" class="d-flex flex-center gap-xs">
+          <span class="spinner"></span>
+          Adding...
+        </span>
+      </button>
+    </div>
+
+  </div>
+</div>

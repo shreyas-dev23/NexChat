@@ -1,0 +1,34 @@
+/* ═══════════════════════════════════════════
+   📛 GROUP NAME DISPLAY (Add Members Modal)
+   
+   Shows "Adding to: Work Team" in read-only box
+   ═══════════════════════════════════════════ */
+
+.group-name-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  background: rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 10px;
+  color: #818cf8;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER ICON SPACING FIX
+   
+   WeChat has small gap between action buttons
+   ═══════════════════════════════════════════ */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px; /* Small gap between buttons */
+}
+
+.header-actions .btn-icon {
+  /* Existing styles stay the same */
+}

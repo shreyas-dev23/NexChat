@@ -1,1 +1,16 @@
 /* You can add global styles to this file, and also import other style files */
+/* ============================================
+   📦 MAIN STYLESHEET - IMPORT ALL
+   ============================================ */
+
+@import "./styles/_variables.css";
+@import "./styles/_reset.css";
+@import "./styles/_typography.css";
+@import "./styles/_animations.css";
+@import "./styles/_forms.css";
+@import "./styles/_buttons.css";
+@import "./styles/_cards.css";
+@import "./styles/_alerts.css";
+@import "./styles/_dialogs.css";
+@import "./styles/_utilities.css";
+@import "./styles/_responsive.css";

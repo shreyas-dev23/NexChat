@@ -1,0 +1,62 @@
+/* ============================================
+   ⚠️ ALERTS & NOTIFICATIONS
+   ============================================ */
+
+/* --- Base Alert --- */
+.alert {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-md);
+  text-align: center;
+  animation: fadeInDown var(--transition-base);
+}
+
+/* --- Error Alert --- */
+.error-alert,
+.alert-error {
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  margin-bottom: var(--space-md);
+  text-align: center;
+  animation: shakeIn var(--transition-slow);
+}
+
+/* --- Success Alert --- */
+.alert-success {
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-primary-lighter);
+  color: var(--color-success);
+}
+
+/* --- Warning Alert --- */
+.alert-warning {
+  background-color: var(--color-warning-bg);
+  border: 1px solid #ffe0a3;
+  color: var(--color-warning);
+}
+
+/* --- Info Alert --- */
+.alert-info {
+  background-color: var(--color-info-bg);
+  border: 1px solid #c8d5e8;
+  color: var(--color-info);
+}
+
+/* --- Toast Notification --- */
+.toast {
+  position: fixed;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-toast);
+  animation: slideInRight var(--transition-base);
+}

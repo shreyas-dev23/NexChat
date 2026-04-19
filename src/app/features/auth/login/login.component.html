@@ -1,0 +1,46 @@
+<!-- ✅ Added "page-center" class for centering -->
+<div class="chatUI page-center">
+  <div class="login-container">
+    <h2>🔐 Sign In</h2>
+
+    <!-- Error Alert -->
+    <div *ngIf="errorMessage" class="error-alert">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+
+    <form [formGroup]="loginForm" (ngSubmit)="login()">
+
+      <!-- Username Field -->
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" formControlName="username" placeholder="Enter username" autocomplete="username" />
+        <small *ngIf="f['username'].touched && f['username'].errors?.['required']">
+          Username is required
+        </small>
+        <small *ngIf="f['username'].touched && f['username'].errors?.['minlength']">
+          Minimum 3 characters
+        </small>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" formControlName="password" placeholder="Enter password"
+          autocomplete="current-password" />
+        <small *ngIf="f['password'].touched && f['password'].errors?.['required']">
+          Password is required
+        </small>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" [disabled]="isLoading">
+        <span *ngIf="!isLoading">Sign In</span>
+        <span *ngIf="isLoading" class="d-flex flex-center gap-xs">
+          <span class="spinner"></span> Signing in...
+        </span>
+      </button>
+    </form>
+
+  </div>
+</div>

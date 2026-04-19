@@ -1,0 +1,252 @@
+/* ============================================
+   📱 RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Tablet */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 280px;
+  }
+
+  .login-container {
+    max-width: 380px;
+    padding: var(--space-xl) var(--space-lg);
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  :root {
+    --sidebar-width: 100%;
+    --header-height: 56px;
+  }
+
+  .login-container {
+    margin: var(--space-md);
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+  }
+
+  .login-container h2 {
+    font-size: var(--text-xl);
+  }
+
+  .card {
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 360px) {
+  .login-container {
+    padding: var(--space-md) var(--space-sm);
+  }
+}
+/* --- Chat Responsive --- */
+@media (max-width: 768px) {
+  .message-bubble {
+    max-width: 85%;
+  }
+
+  .input-bar {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .input-bar .btn-send {
+    padding: var(--space-sm) var(--space-md);
+  }
+}
+
+/* ============================================
+   📱 CHAT RESPONSIVE (Updated)
+   ============================================ */
+
+@media (max-width: 992px) {
+  :root {
+    --sidebar-width: 280px;
+  }
+
+  .message-bubble {
+    max-width: 80%;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    position: relative;
+  }
+
+  .sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-width: 100%;
+    height: 100%;
+    z-index: 2;
+    transition: transform var(--transistion-base);
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar.hide-mobile {
+    transform: translateX(-100%);
+  }
+
+  .chat-window.active {
+    transform: translateX(0);
+  }
+
+  .message-bubble {
+    max-width: 85%;
+  }
+
+  .no-selection-icon {
+    font-size: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  .message-bubble {
+    max-width: 90%;
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .input-bar {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: var(--text-base);
+  }
+
+  .avatar.small {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+  }
+}
+/* ── 23. RESPONSIVE ── */
+@media (min-width: 1024px) {
+  .chat-container {
+    position: relative;
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    border: 0.5px solid var(--color-border-dark);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  /* Fixed padding from screen edges */
+  .message-row {
+    padding: 0 12px;
+  }
+
+  /* Bubble max-width smaller on mobile */
+  .message-bubble {
+    max-width: 80%;
+  }
+
+  /* Consistent right edge for sent */
+  .sent-bubble {
+    margin-right: 8px;
+  }
+
+  /* Consistent left edge for received */
+  .received-bubble {
+    margin-left: 8px;
+  }
+
+  /* Smaller tail on mobile */
+  .sent-bubble::after {
+    right: -6px;
+    border-left-width: 6px;
+    border-bottom-width: 6px;
+  }
+
+  .received-bubble::after {
+    left: -6px;
+    border-right-width: 6px;
+    border-bottom-width: 6px;
+  }
+
+  /* Tighter bubble padding */
+  .message-bubble {
+    padding: 6px 8px;
+  }
+
+  /* Smaller time font */
+  .bubble-time {
+    font-size: 10px;
+  }
+}
+@media (max-width: 480px) {
+  .message-bubble {
+    max-width: 90%;
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .message-bubble .sender {
+    font-size: 10px;
+  }
+
+  .message-bubble .bubble-content {
+    font-size: var(--text-sm);
+  }
+
+  .input-bar input {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--text-sm);
+  }
+
+  /* Use icon-only button on mobile */
+  .input-bar .btn-send span.btn-text {
+    display: none;
+  }
+
+  .message-row {
+    padding: 0 8px;
+  }
+
+  .message-bubble {
+    max-width: 85%;
+    padding: 5px 7px;
+    min-width: 70px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-box {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: slideUp var(--transistion-base);
+  }
+}
+
+@media (max-width: 768px) {
+  .group-info-panel {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+  }
+}

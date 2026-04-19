@@ -1,27 +1,79 @@
-# App
+<div align="center">
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.3.17.
+# 💬 ChatApp
 
-## Development server
+A real-time chat application built with **Angular** and **SignalR**,
+inspired by **WeChat** UI/UX design.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+![Angular](https://img.shields.io/badge/Angular-18-DD0031?style=for-the-badge&logo=angular)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)
+![SignalR](https://img.shields.io/badge/SignalR-Real--time-512BD4?style=for-the-badge&logo=dotnet)
+![License](https://img.shields.io/badge/License-MIT-07C160?style=for-the-badge)
 
-## Code scaffolding
+[Features](#-features) •
+[Screenshots](#-screenshots) •
+[Getting Started](#-getting-started) •
+[Architecture](#-architecture) •
+[Contributing](#-contributing)
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+</div>
 
-## Build
+---
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+## ✨ Features
 
-## Running unit tests
+### 💬 Messaging
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+- ✅ Real-time 1:1 messaging via SignalR
+- ✅ Group chat support
+- ✅ Message delivery status (Sending → Sent → Read)
+- ✅ Message retry on failure
+- ✅ Chat history with date separators
 
-## Running end-to-end tests
+### 👥 Users & Groups
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+- ✅ User online/offline status
+- ✅ Last seen timestamps
+- ✅ Create group chats
+- ✅ Add/remove group members
+- ✅ Group info panel
 
-## Further help
+### 🎨 UI/UX
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+- ✅ WeChat-inspired design
+- ✅ Mobile-first responsive layout
+- ✅ Typing indicators
+- ✅ Unread message badges
+- ✅ Custom dialog system (Alert, Confirm, Prompt)
+- ✅ Lucide icon system (no emoji icons)
+- ✅ Global CSS design system with CSS variables
+
+### 🔐 Auth
+
+- ✅ JWT Authentication
+- ✅ Protected routes
+- ✅ Auto-reconnect on disconnect
+
+---
+
+## 📸 Screenshots
+
+| Conversations                            | Chat                               | Group Info                           |
+| ---------------------------------------- | ---------------------------------- | ------------------------------------ |
+| ![Sidebar](docs/screenshots/sidebar.png) | ![Chat](docs/screenshots/chat.png) | ![Group](docs/screenshots/group.png) |
+
+| Login                                | Create Group                                       | Mobile                                 |
+| ------------------------------------ | -------------------------------------------------- | -------------------------------------- |
+| ![Login](docs/screenshots/login.png) | ![Create Group](docs/screenshots/create-group.png) | ![Mobile](docs/screenshots/mobile.png) |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+```bash
+node >= 18.x
+npm >= 9.x
+Angular CLI >= 18.x
+```

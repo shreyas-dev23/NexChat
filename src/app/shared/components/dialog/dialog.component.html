@@ -1,0 +1,37 @@
+<ng-container *ngIf="dialog$ |async as dialog">
+  <div class="modal-backdrop" (click)="onBackdropClick(dialog)">
+    <div class="dialog-box" (click)="$event.stopPropagation()">
+      <div class="dialog-icon" [class]="dialog.variant">
+        <lucide-icon [name]="getIcon(dialog.variant)" [size]="28">
+        </lucide-icon>
+      </div>
+
+      <h3 class="dialog-title">{{dialog.title}}</h3>
+
+      <p class="dialog-message">{{dialog.message}}</p>
+
+      <div class="dialog-input-wrapper" *ngIf="dialog.type==='prompt'">
+        <input #promptInput class="dialog-input" [placeholder]="dialog.placeholder" type="text"
+          [(ngModel)]="promptValue" (keyup.enter)="onConfirm(dialog)" autocomplete="off">
+      </div>
+
+      <div class="dialog-actions">
+        <ng-container *ngIf="dialog.type === 'alert'">
+          <button class="dialog-btn-confirm" [class]="dialog.variant" (click)="onConfirm(dialog)">
+            {{ dialog.confirmText || 'OK' }}
+          </button>
+        </ng-container>
+        <ng-container *ngIf="dialog.type !== 'alert'">
+          <button class="dialog-btn-cancel" (click)="onCancel(dialog)">
+            {{ dialog.cancelText || 'Cancel' }}
+          </button>
+          <button class="dialog-btn-confirm" [class]="dialog.variant" (click)="onConfirm(dialog)">
+            {{ dialog.confirmText || 'Confirm' }}
+          </button>
+        </ng-container>
+      </div>
+
+    </div>
+  </div>
+
+</ng-container>

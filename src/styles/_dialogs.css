@@ -1,0 +1,191 @@
+/* ============================================
+   💬 DIALOGS — CONFIRM, ALERT, PROMPT
+   WeChat Style
+   ============================================ */
+
+/* ── Dialog Box ── */
+.dialog-box {
+  background-color: var(--color-white);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 320px;
+  padding: var(--space-xl) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-xl);
+  animation: slideUp var(--transition-base);
+}
+
+/* ── Dialog Icon ── */
+.dialog-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.dialog-icon.danger {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.dialog-icon.warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.dialog-icon.info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.dialog-icon.success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+/* ── Dialog Title ── */
+.dialog-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* ── Dialog Message ── */
+.dialog-message {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+/* ── Prompt Input ── */
+.dialog-input-wrapper {
+  width: 100%;
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 10px var(--space-sm);
+  background-color: var(--color-bg-secondary);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+  text-align: left;
+}
+
+.dialog-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.dialog-input:focus {
+  border-color: var(--color-primary);
+  background-color: var(--color-white);
+  box-shadow: 0 0 0 3px var(--color-primary-bg);
+}
+
+/* ── Dialog Actions ── */
+.dialog-actions {
+  display: flex;
+  gap: var(--space-md);
+  width: 100%;
+  margin-top: var(--space-sm);
+}
+
+/* Cancel Button */
+.dialog-btn-cancel {
+  flex: 1;
+  padding: 10px var(--space-md);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-family: inherit;
+  border: 1.5px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dialog-btn-cancel:hover {
+  background-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* Confirm Button */
+.dialog-btn-confirm {
+  flex: 1;
+  padding: 10px var(--space-md);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+/* Alert: Full width confirm */
+.dialog-actions:has(.dialog-btn-confirm:only-child) .dialog-btn-confirm {
+  flex: 1;
+  width: 100%;
+}
+
+/* Variants */
+.dialog-btn-confirm:hover {
+  background-color: var(--color-primary-dark);
+}
+.dialog-btn-confirm.danger {
+  background-color: var(--color-error);
+}
+.dialog-btn-confirm.danger:hover {
+  background-color: #e03e3e;
+}
+.dialog-btn-confirm.warning {
+  background-color: var(--color-warning);
+}
+.dialog-btn-confirm.success {
+  background-color: var(--color-success);
+}
+.dialog-btn-confirm.info {
+  background-color: var(--color-info);
+}
+
+/* ══════════════════════════════════════════
+   📱 MOBILE — Bottom Sheet
+   ══════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .modal-backdrop:has(.dialog-box) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .dialog-box {
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  /* Danger confirm on TOP for mobile */
+  .dialog-actions {
+    flex-direction: column;
+  }
+
+  .dialog-btn-confirm {
+    order: -1;
+  }
+}
