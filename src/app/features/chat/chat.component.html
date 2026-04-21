@@ -269,12 +269,101 @@
             <button class="btn-icon" title="Video Call">
               <lucide-icon name="video" [size]="20"></lucide-icon>
             </button>
-            <button class="btn-icon" title="More Options">
+            <button class="btn-icon" (click)="toggleMoreMenu()" [class.active]="showMoreMenu" title="More Options">
               <lucide-icon name="more-vertical" [size]="20"></lucide-icon>
             </button>
+
+            <div class="more-menu" *ngIf="showMoreMenu">
+
+              <!-- 🔍 Search Messages -->
+              <button class="more-menu-item" (click)="toggleSearchBox(); closeMoreMenu()">
+                <lucide-icon name="search" [size]="18"></lucide-icon>
+                <span>Search </span>
+              </button>
+
+              <div class="more-menu-divider"></div>
+
+
+              <button *ngIf="selectedItem?.type === 'group'" class="more-menu-item danger"
+                (click)="leaveGroup(); closeMoreMenu()">
+                <lucide-icon name="log-out" [size]="18"></lucide-icon>
+                <span>Leave Group</span>
+              </button>
+
+              <button class="more-menu-item danger" (click)="clearChat(); closeMoreMenu()">
+                <lucide-icon name="trash-2" [size]="18"></lucide-icon>
+                <span>Clear Chat</span>
+              </button>
+            </div>
+            <div class="more-menu-backdrop" *ngIf="showMoreMenu" (click)="closeMoreMenu()">
+            </div>
           </div>
         </div>
 
+
+        <div class="search-panel" *ngIf="showSearchBox">
+
+          <!-- Search Input -->
+          <div class="search-input-wrapper">
+            <lucide-icon name="search" [size]="18"></lucide-icon>
+            <input type="text" class="search-input" placeholder="Search messages..." [(ngModel)]="searchQuery"
+              (input)="onSearchInput()" autocomplete="off" />
+            <button *ngIf="searchQuery" class="btn-clear-search" (click)="searchQuery = ''; searchResults = []">
+              <lucide-icon name="x" [size]="16"></lucide-icon>
+            </button>
+          </div>
+
+          <!-- Search Results -->
+          <div class="search-results">
+
+            <!-- Loading -->
+            <div *ngIf="isSearching" class="loading-state">
+              <span class="spinner"></span>
+              Searching...
+            </div>
+
+            <!-- No Results -->
+            <div *ngIf="!isSearching && searchQuery.length >= 2 && searchResults.length === 0" class="empty-state">
+              <lucide-icon name="search-x" [size]="32"></lucide-icon>
+              <p>No messages found</p>
+              <small>Try different keywords</small>
+            </div>
+
+            <!-- Results List -->
+            <div *ngIf="!isSearching && searchResults.length > 0" class="search-results-list">
+
+              <!-- Result Count -->
+              <div class="search-count">
+                {{ searchResults.length }} message{{ searchResults.length === 1 ? '' : 's' }} found
+              </div>
+
+              <!-- Result Items -->
+              <div *ngFor="let result of searchResults" class="search-result-item" (click)="jumpToMessage(result)">
+
+                <!-- Sender & Date -->
+                <div class="result-meta">
+                  <span class="result-sender">
+                    {{ result.senderId === currentUserId ? 'You' : result.senderName }}
+                  </span>
+                  <span class="result-date">
+                    {{ result.sentAt | date:'MMM d, y' }}
+                  </span>
+                </div>
+
+                <!-- Message Content (with highlights) -->
+                <div class="result-content" [innerHTML]="result.highlightedContent">
+                </div>
+
+                <!-- Time -->
+                <div class="result-time">
+                  {{ result.sentAt | date:'shortTime' }}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
         <!-- ── Error Alert ── -->
         <div *ngIf="errorMessage" class="error-alert">
           <span class="d-flex flex-center gap-xs">

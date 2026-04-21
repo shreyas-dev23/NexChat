@@ -48,6 +48,9 @@ import { DialogService } from '../../shared/services/dialog.service';
   imports: [CommonModule, FormsModule, DatePipe, UpperCasePipe, IconsModule],
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
+  clearChat() {
+    throw new Error('Method not implemented.');
+  }
   // ═══════════════════════════════════════════
   // 📌 Data State
   // ═══════════════════════════════════════════
@@ -94,6 +97,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   isSearching = false;
   private searchInput$ = new Subject<string>();
 
+  showMoreMenu = false;
+
+  toggleMoreMenu(): void {
+    this.showMoreMenu = !this.showMoreMenu;
+  }
+  closeMoreMenu(): void {
+    this.showMoreMenu = false;
+  }
   // ═══════════════════════════════════════════
   // 🕐 LAST SEEN (NEW)
   // ═══════════════════════════════════════════
@@ -1554,7 +1565,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   toggleSearchBox(): void {
-    this.showSearchBox = !this.toggleSearchBox;
+    debugger;
+    this.showSearchBox = !this.showSearchBox;
 
     if (!this.showSearchBox) {
       this.clearSearch();
@@ -1634,8 +1646,46 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return text.replace(regex, '<mark>$1</mark>');
   }
   private escapeRegex(text: string) {
-    return text.repeat();
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+
+  jumpToMessage(result: SearchResult): void {
+    this.clearSearch();
+
+    const msgIndex = this.messages.findIndex((m) => m.id === result.id);
+    if (msgIndex !== 1) {
+      setTimeout(() => {
+        const el = document.querySelector(
+          `[data-message-id = "${result.id}"]`,
+        ) as HTMLElement;
+
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          el.classList.add('message-highlight');
+
+          setTimeout(() => {
+            el.classList.remove('message-highlight');
+          }, 2000);
+        }
+      }, 100);
+    } else {
+      this.dialog.confirm({
+        variant: 'info',
+        title: 'Scroll up',
+        message: 'This message is in older history. Scroll up to load it.',
+        confirmText: 'Ok',
+      });
+    }
+  }
+
+  clearSearch(): void {
+    this.showSearchBox = false;
+    this.searchQuery = '';
+    this.searchResults = [];
+    this.isSearching = false;
+  }
+
   closeCreateGroupModal(): void {
     this.showCreateGroupModal = false;
     this.newGroupName = '';

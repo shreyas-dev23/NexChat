@@ -250,3 +250,17 @@
     border-left: none;
   }
 }
+/* ══════════════════════════════════════════
+   📱 MOBILE
+   ══════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .more-menu {
+    right: 0;
+    min-width: 180px;
+  }
+
+  .more-menu-item {
+    padding: var(--space-md) var(--space-md);
+  }
+}
