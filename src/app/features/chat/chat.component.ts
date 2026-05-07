@@ -24,6 +24,7 @@ import {
   Conversation,
   Message,
   IncomingMessage,
+  IncomingGroupMessage,
   ReadReceipt,
   ConnectionState,
   LastSeenEvent,
@@ -31,6 +32,7 @@ import {
   SelectableUser,
   GroupMemberDetail,
   SearchResult,
+  UploadResponse,
 } from '../../core/models/chat.models';
 import { CommonModule, DatePipe, UpperCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,7 +41,7 @@ import { DateHelperService } from '../../core/services/date-helper.service';
 import { TitleStrategy } from '@angular/router';
 import { group } from '@angular/animations';
 import { DialogService } from '../../shared/services/dialog.service';
-
+import { FileUploadService } from '../../core/services/file-upload.service';
 @Component({
   selector: 'app-chat',
   templateUrl: './chat.component.html',
@@ -143,12 +145,53 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private destroy$ = new Subject<void>();
   isLoadingUsers: boolean = false;
 
+  //Pagination State (NEW)
+  private currentPage = 1;
+  private readonly pageSize = 50;
+  hasMoreMessages = true;
+  isLoadingOlderMessages = false;
+
+  // ═══════════════════════════════════════════
+  // 📎 FILE UPLOAD STATE (NEW)
+  // ═══════════════════════════════════════════
+
+  // File chosen but not yet sent — shows preview panel
+  filePreview: {
+    file: File;
+    dataUrl: string | null;
+    messageType: 'image' | 'file';
+  } | null = null;
+
+  // In-progress upload tracking
+  uploadInProgress = false;
+  uploadProgress = 0;
+  uploadFileName = '';
+
+  // Used to cancel an in-flight upload
+  private uploadCancel$ = new Subject<void>();
+
+  // Validation / network error shown below input
+  uploadError: string | null = null;
+
+  // Drag-over visual feedback
+  isDraggingOver = false;
+  // Full-screen image viewer
+  lightboxUrl: string | null = null;
+
+  // Scroll management
+  private isNearBottom = true;
+  showJumpToBottom = false;
+  newMessageCount = 0;
+
+  private oldestLoadingMessagesId: number | null = null;
+
   constructor(
     private chatService: ChatService,
     private signalR: SignalRService,
     private auth: AuthService,
     public dateHelper: DateHelperService,
     private dialog: DialogService,
+    public fileUploadService: FileUploadService,
   ) {
     this.currentUserId = this.auth.getUserId();
   }
@@ -246,6 +289,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.subscribeToConnection();
     this.subscribeToGroupEvents();
     this.subscribeToErrors();
+    this.subscribeToFileEvents();
 
     // 4️⃣ Setup debounced typing emission
     this.typingInput$
@@ -288,12 +332,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private handleIncomingMessage(incoming: IncomingMessage): void {
     const message: Message = {
+      id: incoming.id,
       senderId: incoming.senderId,
       receiverId: this.currentUserId,
       content: incoming.content,
       sentAt: incoming.sentAt ?? new Date().toISOString(),
       isMine: false,
       isRead: false,
+
+      messageType: incoming.messageType ?? 'text',
+      fileUrl: incoming.fileUrl,
+      fileName: incoming.fileName,
+      fileSize: incoming.fileSize,
+      fileType: incoming.fileType,
     };
 
     // ── Is this message for the currently open chat? ──
@@ -301,8 +352,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       this.selectedUser && incoming.senderId === this.selectedUser.userId;
 
     if (isRelevant) {
-      this.messages.push(message);
-      this.shouldScroll = true;
+      this.addMessageWithSeparator(message);
+
+      if (this.isNearBottom) {
+        this.shouldScroll = true;
+      } else {
+        this.newMessageCount++;
+        this.showJumpToBottom = true;
+      }
 
       // ✅ Auto-mark as read since chat is open
       this.signalR.markAsRead(incoming.senderId).catch(() => {});
@@ -312,11 +369,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.selectedUser.isTyping = false;
       }
     }
-
+    const previewText = this.buildPreviewText(
+      incoming.messageType ?? 'text',
+      incoming.content,
+      incoming.fileName,
+    );
     // ── Update sidebar ──
     this.updateConversationPreview(
       incoming.senderId,
-      incoming.content,
+      previewText,
       !isRelevant, // increment unread only if NOT viewing
     );
   }
@@ -403,6 +464,40 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         }
       });
   }
+
+  private subscribeToFileEvents(): void {
+    this.signalR.onFileMessageSent
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({ realId, fileUrl, messageType }) => {
+        const placeholder = this.messages.find(
+          (m) =>
+            m.isUploading === false &&
+            m.fileUrl === fileUrl &&
+            m.isMine === true &&
+            !m.id,
+        );
+        if (placeholder) {
+          placeholder.id = realId;
+          placeholder.status = 'sent';
+        }
+      });
+
+    this.signalR.onFileGroupMessageSent
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(({ realId, groupId, fileUrl }) => {
+        const placeholder = this.messages.find(
+          (m) =>
+            m.isUploading === false &&
+            m.fileUrl === fileUrl &&
+            m.isMine === true &&
+            !m.id,
+        );
+        if (placeholder) {
+          placeholder.id = realId;
+        }
+      });
+  }
+
   private findConversation(userId: number): Conversation | undefined {
     return this.conversations.find((c) => c.userId === userId);
   }
@@ -618,7 +713,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.errorMessage = '';
     this.newMessage = '';
 
-    this.loadChatHistory(user.userId);
+    this.loadChatHistory(user.userId, true);
 
     // Step 5: Load last seen ✅ NEW
     this.loadLastSeen(user);
@@ -688,17 +783,41 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   // to add date separator labels.
   //
 
-  loadChatHistory(userId: number): void {
-    this.isLoadingHistory = true;
+  loadChatHistory(userId: number, reset: boolean): void {
+    if (reset) {
+      this.currentPage = 1;
+      this.hasMoreMessages = true;
+      this.oldestLoadingMessagesId = null;
+      this.messages = [];
+      this.isLoadingHistory = true;
+    } else {
+      this.isLoadingOlderMessages = true;
+    }
 
     this.chatService
-      .getChatHistory(userId)
+      .getChatHistory(
+        userId,
+        this.currentPage,
+        this.pageSize,
+        this.oldestLoadingMessagesId ?? undefined,
+      )
       .pipe(
         takeUntil(this.destroy$),
-        finalize(() => (this.isLoadingHistory = false)),
+        finalize(
+          () => (
+            (this.isLoadingHistory = false),
+            (this.isLoadingOlderMessages = false)
+          ),
+        ),
       )
       .subscribe({
         next: (history) => {
+          if (history.length == 0) {
+            this.hasMoreMessages = false;
+          }
+          if (history.length < this.pageSize) {
+            this.hasMoreMessages = false;
+          }
           // Step 1: Add isMine flag
           const mapped = history.map((msg) => ({
             ...msg,
@@ -706,8 +825,18 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
           }));
 
           // Step 2: Process date separators ✅ NEW
-          this.messages = this.processDateSeparators(mapped);
-          this.shouldScroll = true;
+          if (reset) {
+            this.messages = this.processDateSeparators(mapped);
+            this.shouldScroll = true;
+          } else {
+            const combined = [...mapped, ...this.messages];
+            this.preserveScrollPosition();
+          }
+
+          if (mapped.length > 0) {
+            this.oldestLoadingMessagesId = mapped[0].id ?? null;
+          }
+          this.currentPage++;
         },
         error: (err) => (this.errorMessage = err.message),
       });
@@ -1054,7 +1183,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       const convo = this.conversations.find((c) => c.userId === item.userId);
       if (convo) {
         this.selectedUser = convo;
-        this.loadChatHistory(item.userId);
+        this.loadChatHistory(item.userId, true);
         this.loadLastSeen(convo);
         convo.unreadCount = 0;
         this.signalR.markAsRead(item.userId).catch(() => {});
@@ -1113,7 +1242,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
         if (isViewing && !isFromMe) {
           const message: Message = {
-            id: undefined,
+            id: msg.id,
             senderId: msg.senderId,
             receiverId: 0,
             groupId: msg.groupId,
@@ -1122,18 +1251,33 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             isMine: false,
             senderName: senderName,
             status: undefined,
+
+            messageType: msg.messageType ?? 'text',
+            fileUrl: msg.fileUrl,
+            fileName: msg.fileName,
+            fileSize: msg.fileSize,
+            fileType: msg.fileType,
           };
           this.addMessageWithSeparator(message);
           this.shouldScroll = true;
         }
+        if (this.isNearBottom) {
+          this.shouldScroll = true;
+        } else {
+          this.newMessageCount++;
+          this.showJumpToBottom = true;
+        }
 
-        const preview = isFromMe
-          ? `You:${msg.content}`
-          : `${senderName}:${msg.content}`;
+        const previewText = this.buildPreviewText(
+          msg.messageType ?? 'text',
+          msg.content,
+          msg.fileName,
+          isFromMe ? 'You' : senderName,
+        );
 
         this.updateSidebarItem(
           `group-${msg.groupId}`,
-          preview,
+          previewText,
           !isViewing && !isFromMe,
         );
       });
@@ -1265,17 +1409,40 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return item.id;
   }
 
-  loadGroupHistory(groupId: number): void {
-    this.isLoadingHistory = true;
+  loadGroupHistory(groupId: number, reset: boolean = true): void {
+    if (reset) {
+      this.currentPage = 1;
+      this.hasMoreMessages = true;
+      this.oldestLoadingMessagesId = null;
+      this.messages = [];
+      this.isLoadingHistory = true;
+    } else {
+      this.isLoadingOlderMessages = true;
+    }
 
     this.chatService
-      .getGroupMessages(groupId)
+      .getGroupMessages(
+        groupId,
+        this.currentPage,
+        this.pageSize,
+        this.oldestLoadingMessagesId ?? undefined,
+      )
       .pipe(
         takeUntil(this.destroy$),
-        finalize(() => (this.isLoadingHistory = false)),
+        finalize(() => {
+          this.isLoadingHistory = false;
+          this.isLoadingOlderMessages = false;
+        }),
       )
       .subscribe({
         next: (history) => {
+          if (history.length === 0) {
+            this.hasMoreMessages = false;
+            return;
+          }
+          if (history.length < this.pageSize) {
+            this.hasMoreMessages = false;
+          }
           const mapped: Message[] = history.map((msg) => ({
             id: msg.id,
             senderId: msg.senderId,
@@ -1289,9 +1456,17 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             isRead: true,
             status: undefined,
           }));
-
-          this.messages = this.processDateSeparators(mapped);
-          this.shouldScroll = true;
+          if (reset) {
+            this.messages = this.processDateSeparators(mapped);
+            this.shouldScroll = true;
+          } else {
+            const combined = [...mapped, ...this.messages];
+            this.preserveScrollPosition();
+          }
+          if (mapped.length > 0) {
+            this.oldestLoadingMessagesId = mapped[0].id ?? null;
+          }
+          this.currentPage++;
         },
         error: (err) => (this.errorMessage = err.message),
       });
@@ -1581,6 +1756,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   onSearchInput(): void {
+    debugger;
     const query = this.searchQuery.trim();
     if (query.length === 0) {
       this.searchResults = [];
@@ -1599,10 +1775,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     let search$: Observable<SearchResult[]>;
 
-    if (
-      this.selectedItem.type === 'user' &&
-      this.selectedItem.userId === this.currentUserId
-    ) {
+    if (this.selectedItem.type === 'user' && this.selectedItem.userId) {
       search$ = this.chatService.searchUserMessages(
         this.selectedItem.userId,
         query,
@@ -1649,36 +1822,419 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
-  jumpToMessage(result: SearchResult): void {
+  // ═══════════════════════════════════════════
+  // 🎯 JUMP TO MESSAGE (UPDATED with Pagination)
+  // ═══════════════════════════════════════════
+
+  async jumpToMessage(result: SearchResult): Promise<void> {
     this.clearSearch();
 
+    // Check if message is already loaded
     const msgIndex = this.messages.findIndex((m) => m.id === result.id);
-    if (msgIndex !== 1) {
-      setTimeout(() => {
-        const el = document.querySelector(
-          `[data-message-id = "${result.id}"]`,
-        ) as HTMLElement;
 
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-          el.classList.add('message-highlight');
-
-          setTimeout(() => {
-            el.classList.remove('message-highlight');
-          }, 2000);
-        }
-      }, 100);
+    if (msgIndex !== -1) {
+      // ✅ Already loaded — just scroll to it
+      this.scrollToMessageById(result.id!);
     } else {
-      this.dialog.confirm({
-        variant: 'info',
-        title: 'Scroll up',
-        message: 'This message is in older history. Scroll up to load it.',
-        confirmText: 'Ok',
-      });
+      // ❌ Not loaded — need to load context around it
+      await this.loadMessageContext(result.id!, result.sentAt);
     }
   }
 
+  /**
+   * Load messages around a specific message (for search results).
+   */
+  private async loadMessageContext(
+    messageId: number,
+    timestamp: string,
+  ): Promise<void> {
+    if (!this.selectedItem) return;
+
+    this.isLoadingHistory = true;
+
+    try {
+      // Reset pagination state
+      this.currentPage = 1;
+      this.hasMoreMessages = true;
+      this.oldestLoadingMessagesId = null;
+
+      // Load 50 messages BEFORE this one + 50 AFTER
+      // For now, load using beforeId = messageId + 50
+      // (Full implementation would need a new endpoint)
+
+      if (this.selectedItem.type === 'user' && this.selectedItem.userId) {
+        await this.loadChatHistory(this.selectedItem.userId, true);
+      } else if (
+        this.selectedItem.type === 'group' &&
+        this.selectedItem.groupId
+      ) {
+        await this.loadGroupHistory(this.selectedItem.groupId, true);
+      }
+
+      // After load, scroll to the message
+      setTimeout(() => {
+        this.scrollToMessageById(messageId);
+      }, 300);
+    } catch (err) {
+      this.errorMessage = 'Failed to load message context';
+    } finally {
+      this.isLoadingHistory = false;
+    }
+  }
+
+  /**
+   * Scroll to a specific message and highlight it.
+   */
+  private scrollToMessageById(messageId: number): void {
+    setTimeout(() => {
+      const el = document.querySelector(
+        `[data-message-id="${messageId}"]`,
+      ) as HTMLElement;
+
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Flash highlight
+        el.classList.add('message-highlight');
+        setTimeout(() => el.classList.remove('message-highlight'), 2000);
+      } else {
+        // Message still not in view (very old)
+        alert('Message is too old. Scroll up to load it.');
+      }
+    }, 100);
+  }
+  // ═══════════════════════════════════════════
+  // 📜 SCROLL MANAGEMENT (NEW)
+  // ═══
+
+  onMessageScroll(): void {
+    const container = this.messageContainer?.nativeElement;
+    if (!container) return;
+
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+
+    if (
+      scrollTop < 200 &&
+      !this.isLoadingOlderMessages &&
+      this.hasMoreMessages
+    ) {
+      this.loadOlderMessages();
+    }
+
+    const scrollBottom = scrollHeight - scrollTop - clientHeight;
+    this.isNearBottom = scrollBottom < 100;
+
+    if (this.isNearBottom) {
+      this.showJumpToBottom = false;
+      this.newMessageCount = 0;
+    } else {
+      this.showJumpToBottom = true;
+    }
+  }
+
+  private loadOlderMessages(): void {
+    if (!this.selectedItem) return;
+
+    if (this.selectedItem.type === 'user' && this.selectedItem.userId) {
+      this.loadChatHistory(this.selectedItem.userId, false);
+    } else if (
+      this.selectedItem.type === 'group' &&
+      this.selectedItem.groupId
+    ) {
+      this.loadGroupHistory(this.selectedItem.groupId, false);
+    }
+  }
+
+  private preserveScrollPosition() {
+    const container = this.messageContainer?.nativeElement;
+
+    if (!container) return;
+
+    const oldScrollHeight = container.scrollHeight;
+
+    setTimeout(() => {
+      const newScrollHeight = container.scrollHeight;
+      const diff = newScrollHeight - oldScrollHeight;
+      container.scrollTop = container.scrollTop - diff;
+    }, 0);
+  }
+  jumpToLatest() {
+    this.scrollToBottom();
+    this.showJumpToBottom = false;
+    this.newMessageCount = 0;
+  }
+  // ═══════════════════════════════════════════
+  // 📎 FILE UPLOAD (NEW)
+  // ═══════════════════════════════════════════
+  openFilePicker(): void {
+    (document.getElementById('file-input') as HTMLInputElement)?.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+    this.preparePreview(file);
+  }
+
+  private preparePreview(file: File) {
+    this.uploadError = null;
+
+    const error = this.fileUploadService.validate(file);
+    if (error) {
+      this.uploadError = error;
+      return;
+    }
+    const messageType = this.fileUploadService.isImage(file.type)
+      ? 'image'
+      : 'file';
+
+    if (messageType === 'image') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.filePreview = {
+          file,
+          dataUrl: reader.result as string,
+          messageType: 'image',
+        };
+      };
+
+      reader.readAsDataURL(file);
+    } else {
+      this.filePreview = {
+        file,
+        dataUrl: null,
+        messageType: 'file',
+      };
+    }
+  }
+
+  cancelPreview(): void {
+    this.filePreview = null;
+    this.uploadError = null;
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDraggingOver = true;
+  }
+
+  onDragLeave(event: DragEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.isDraggingOver = false;
+  }
+
+  onDrop(event: DragEvent) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.isDraggingOver = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.preparePreview(file);
+  }
+
+  onPaste(event: ClipboardEvent): void {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of Array.from(items)) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        event.preventDefault();
+        const file = item.getAsFile();
+        if (file) this.preparePreview(file);
+        break;
+      }
+    }
+  }
+
+  openLightbox(url: string): void {
+    this.lightboxUrl = url;
+  }
+  closeLightbox(): void {
+    this.lightboxUrl = null;
+  }
+
+  sendFile(): void {
+    if (!this.filePreview || !this.selectItem) return;
+
+    const { file, messageType } = this.filePreview;
+
+    this.filePreview = null;
+    this.uploadInProgress = true;
+    this.uploadProgress = 0;
+    this.uploadFileName = file.name;
+    this.uploadCancel$ = new Subject<void>();
+
+    const tempId = Date.now();
+    const placeholder = this.buildFilePlaceholder(file, messageType, tempId);
+    this.addMessageWithSeparator(placeholder);
+    this.shouldScroll = true;
+
+    this.fileUploadService
+      .upload(file, this.uploadCancel$)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.uploadInProgress = false;
+          this.uploadProgress = 0;
+        }),
+      )
+      .subscribe({
+        next: ({ progress, response }) => {
+          this.uploadProgress = progress;
+
+          if (response) {
+            placeholder.fileUrl = response.fileUrl;
+            placeholder.isUploading = false;
+            placeholder.status = 'sent';
+
+            this.dispatchFileViaSignalR(response, messageType, placeholder);
+          }
+        },
+
+        error: (err) => {
+          // Mark placeholder as failed
+          placeholder.status = 'failed';
+          placeholder.isUploading = false;
+
+          this.uploadError =
+            err.message === 'Upload cancelled'
+              ? 'Upload cancelled'
+              : 'Upload failed — please try again';
+
+          setTimeout(() => (this.uploadError = null), 4000);
+        },
+      });
+  }
+
+  cancelUpload(): void {
+    this.uploadCancel$.next();
+    this.uploadCancel$.complete();
+  }
+
+  private buildFilePlaceholder(
+    file: File,
+    messageType: 'image' | 'file',
+    tempId: number,
+  ): Message {
+    return {
+      senderId: this.currentUserId,
+      receiverId: this.selectedItem?.userId ?? 0,
+      groupId: this.selectedItem?.groupId ?? undefined,
+      content: file.name,
+      sentAt: new Date().toISOString(),
+      isMine: true,
+      status: 'sending',
+      senderName: 'You',
+      messageType,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      fileUrl: undefined,
+      isUploading: true,
+      tempId,
+    } as Message;
+  }
+  private dispatchFileViaSignalR(
+    upload: UploadResponse,
+    messageType: 'image' | 'file',
+    placeholder: Message,
+  ): void {
+    if (!this.selectedItem) return;
+
+    if (this.selectedItem.type === 'user' && this.selectedItem.userId) {
+      this.signalR
+        .sendFileMessage(
+          this.selectedItem.userId,
+          messageType,
+          upload.fileUrl,
+          upload.fileName,
+          upload.fileSize,
+          upload.fileType,
+        )
+        .catch((err) => {
+          console.error('sendFileMessage failed', err);
+          placeholder.status = 'failed';
+        });
+      const preview = this.buildPreviewText(messageType, upload.fileName);
+      this.updateConversationPreview(this.selectedItem.userId, preview, false);
+    }
+
+    // ── Group chat ────────────────────────────────────────────
+    else if (this.selectedItem.type === 'group' && this.selectedItem.groupId) {
+      this.signalR
+        .sendGroupFileMessage(
+          this.selectedItem.groupId,
+          messageType,
+          upload.fileUrl,
+          upload.fileName,
+          upload.fileSize,
+          upload.fileType,
+        )
+        .catch((err) => {
+          console.error('sendGroupFileMessage failed', err);
+          placeholder.status = 'failed';
+        });
+
+      // Update sidebar preview
+      const preview = this.buildPreviewText(
+        messageType,
+        upload.fileName,
+        undefined,
+        'You',
+      );
+      this.updateSidebarItem(
+        `group-${this.selectedItem.groupId}`,
+        preview,
+        false,
+      );
+    }
+  }
+
+  private buildPreviewText(
+    messageType: string,
+    content: string,
+    fileName?: string,
+    prefix?: string,
+  ): string {
+    let preview: string;
+
+    switch (messageType) {
+      case 'image':
+        preview = 'Image'; // ← clean text only
+        break;
+      case 'file':
+        preview = fileName ?? content; // ← just the filename
+        break;
+      case 'audio':
+        preview = 'Voice message';
+        break;
+      case 'video':
+        preview = 'Video';
+        break;
+      default:
+        preview = content;
+    }
+
+    return prefix ? `${prefix}: ${preview}` : preview;
+  }
+
+  // scrollToBottom(smooth: boolean = false): void {
+  //   try {
+  //     const el = this.messageContainer?.nativeElement;
+  //     if (el) {
+  //       if (smooth) {
+  //         el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  //       } else {
+  //         el.scrollTop = el.scrollHeight;
+  //       }
+  //     }
+  //   } catch {}
+  // }
   clearSearch(): void {
     this.showSearchBox = false;
     this.searchQuery = '';

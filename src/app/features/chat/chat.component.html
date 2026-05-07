@@ -1,7 +1,8 @@
 <!-- src/app/chat/chat.component.html -->
 
 <div class="chat-container">
-
+  <input type="file" id="file-input" style="display:none;" accept="image/*,.pdf,.doc,.docx,.xls,.text,.zip"
+    (change)="onFileSelected($event)">
   <!-- ══════════════════════════════════════════
        🔴 CONNECTION BANNER
        ══════════════════════════════════════════ -->
@@ -276,7 +277,7 @@
             <div class="more-menu" *ngIf="showMoreMenu">
 
               <!-- 🔍 Search Messages -->
-              <button class="more-menu-item" (click)="toggleSearchBox(); closeMoreMenu()">
+              <button class="more-menu-item" (click)="toggleSearchBox(); closeMoreMenu();">
                 <lucide-icon name="search" [size]="18"></lucide-icon>
                 <span>Search </span>
               </button>
@@ -382,7 +383,20 @@
         </div>
 
         <!-- ── Messages Area ── -->
-        <div class="messages" #messageContainer *ngIf="!isLoadingHistory">
+        <div class="messages" #messageContainer (scroll)="onMessageScroll()" *ngIf="!isLoadingHistory">
+
+          <div class="loading_older" *ngIf="isLoadingOlderMessages">
+            <span class="spinnner"></span>
+            Loading older messages...
+          </div>
+
+
+
+          <div class="no-more-messages" *ngIf="!hasMoreMessages && messages.length > 0">
+            <span class="divider-text">Beginning of conversation</span>
+          </div>
+
+
 
           <!-- Empty Chat -->
           <div *ngIf="messages.length === 0" class="empty-state center">
@@ -403,9 +417,16 @@
               </span>
               <div class="date-separator-line"></div>
             </div>
-
+            <div class="typing-indicator-bubble" *ngIf="selectedItem?.type === 'user' && selectedUser?.isTyping">
+              <div class="dot-flashing">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
             <!-- ✅ Message Row — Separate from separator -->
-            <div class="message-row" [class.sent]="msg.isMine" [class.received]="!msg.isMine">
+            <div class="message-row" [class.sent]="msg.isMine" [class.received]="!msg.isMine"
+              [attr.data-message-id]="msg.id">
 
               <div class="message-bubble" [class.sent-bubble]="msg.isMine" [class.received-bubble]="!msg.isMine"
                 [class.failed]="msg.status === 'failed'">
@@ -448,24 +469,97 @@
 
         </div>
 
+        <button class="btn-jump-to-bottom" *ngIf="showJumpToBottom" (click)="jumpToLatest()">
+          <lucide-icon name="arrow-down" [size]="20"></lucide-icon>
+          <span *ngIf="newMessageCount > 0" class="new-msg-badge">
+            {{ newMessageCount }}
+          </span>
+        </button>
+
         <!-- ── Input Bar ── -->
+
+        <div class="file-preview-panel" *ngIf="filePreview">
+
+          <img *ngIf="filePreview.messageType === 'image' && filePreview.dataUrl" [src]="filePreview.dataUrl"
+            alt="Preview" class="preview-thumb">
+
+
+          <div *ngIf="filePreview.messageType === 'file'" class="preview-file-card">
+            <lucide-icon [name]="fileUploadService.getFileIcon(filePreview.file.type)" [size]="32"
+              class="preview-file-icon">
+            </lucide-icon>
+
+            <div class="preview-file-meta">
+              <span class="preview-file-name">
+                {{filePreview.file.name}}
+              </span>
+              <span class="preview-file-size">
+                {{fileUploadService.formatSize(filePreview.file.size)}}
+              </span>
+            </div>
+          </div>
+
+          <div class="preview-actions">
+            <button class="btn-cancel-preview" (click)="cancelPreview()">
+              <lucide-icon name="x" [size]="16"></lucide-icon>
+              Cancel
+            </button>
+            <button class="btn-send-file" (click)="sendFile()">
+              <lucide-icon name="send" [size]="16">
+              </lucide-icon>
+              Send
+            </button>
+          </div>
+
+        </div>
+
+        <div class="upload-progress-wrap" *ngIf="uploadInProgress">
+
+          <div class="upload-progress-header">
+            <lucide-icon name="upload" [size]="14"></lucide-icon>
+            <span class="upload-filename">{{ uploadFileName }}</span>
+            <span class="upload-percent">{{ uploadProgress }}%</span>
+            <button class="btn-cancel-upload" (click)="cancelUpload()">
+              <lucide-icon name="x" [size]="14"></lucide-icon>
+            </button>
+          </div>
+
+          <div class="upload-track">
+            <div class="upload-fill" [style.width.%]="uploadProgress"></div>
+          </div>
+
+        </div>
+
+        <!-- Upload validation / network error -->
+        <div class="upload-error-bar" *ngIf="uploadError">
+          <lucide-icon name="alert-circle" [size]="14"></lucide-icon>
+          {{ uploadError }}
+          <button (click)="uploadError = null">
+            <lucide-icon name="x" [size]="12"></lucide-icon>
+          </button>
+        </div>
+
         <div class="input-bar">
-          <!-- Attachment Button -->
-          <button class="btn-icon" title="Attach file">
-            <lucide-icon name="plus" [size]="22"></lucide-icon>
+          <button class="btn-icon" title="Attach file(max 10 MB)" (click)="openFilePicker()"
+            [disabled]="uploadProgress || connectionState !== 'connected'">
+            <lucide-icon name="paperclip" [size]="20"></lucide-icon>
           </button>
 
-          <input #messageInput [(ngModel)]="newMessage" placeholder="Type a message..." (keyup)="onInputKeyup($event)"
-            (ngModelChange)="onInputChange()" [disabled]="connectionState !== 'connected'" [maxlength]="4000"
-            autocomplete="off" />
 
-          <!-- Send Button -->
+          <input #messageInput [(ngModel)]="newMessage" placeholder="Type a message..." (keyup)="onInputKeyup($event)"
+            (ngModelChange)="onInputChange()" (paste)="onPaste($event)" [disabled]="connectionState !== 'connected'"
+            [maxlength]="4000" autocomplete="off" />
+
           <button class="send-btn" (click)="send()"
             [disabled]="!newMessage.trim() || isSending || connectionState !== 'connected'" title="Send message">
             <lucide-icon *ngIf="!isSending" name="send" [size]="20"></lucide-icon>
             <span *ngIf="isSending" class="spinner"></span>
           </button>
+
+
         </div>
+
+
 
       </ng-container>
     </main>

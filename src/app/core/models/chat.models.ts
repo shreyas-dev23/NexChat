@@ -32,6 +32,15 @@ export interface Message {
 
   senderName?: string;
   groupId?: number;
+
+  messageType?: 'text' | 'image' | 'file';
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+
+  isUploading?: boolean;
+  tempId?: number;
 }
 
 // ═══════════════════════════════════════════
@@ -41,6 +50,13 @@ export interface IncomingMessage {
   senderId: number;
   content: string;
   sentAt: string;
+
+  messageType?: 'text' | 'image' | 'file';
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  id?: number;
 }
 
 // ═══════════════════════════════════════════
@@ -104,6 +120,29 @@ export interface SearchResult {
   highlightedContent?: string;
 }
 
+export interface UploadResponse {
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  safeFileName: string;
+}
+
+export interface IncomingGroupMessage {
+  senderId: number;
+  senderName: string;
+  groupId: number;
+  content: string;
+  sentAt: string;
+
+  messageType?: 'text' | 'image' | 'file';
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  id?: number;
+}
+
 // ═══════════════════════════════════════════
 // 🔌 Connection State
 // ═══════════════════════════════════════════
@@ -141,7 +180,8 @@ export const HubEvents = {
   RemoveMemberAsync: 'RemoveMemberAsync',
   GroupDeleted: 'GroupDeleted',
   DeleteGroupAsync: 'DeleteGroupAsync',
-
+  FileMessageSent: 'FileMessageSent',
+  FileGroupMessageSent: 'FileGroupMessageSent',
   // Client → Server (hub method names)
   SendMessage: 'SendMessage',
   Typing: 'Typing',
@@ -151,4 +191,7 @@ export const HubEvents = {
   SendGroupMessage: 'SendGroupMessage',
   AddedToGroup: 'AddedToGroup',
   AddedMembersAsync: 'AddMembersAsync',
+
+  SendFileMessage: 'SendFileMessage',
+  SendGroupFileMessage: 'SendGroupFileMessage',
 } as const;

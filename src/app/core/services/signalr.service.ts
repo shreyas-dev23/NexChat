@@ -13,6 +13,7 @@ import { environment } from '../../../environments/environment';
 import {
   ConnectionState,
   HubEvents,
+  IncomingGroupMessage,
   IncomingMessage,
   LastSeenEvent,
   ReadReceipt,
@@ -97,12 +98,18 @@ export class SignalRService implements OnDestroy {
     groupId: number;
     deletedBy: number;
   }>();
-  readonly onGroupMessageReceived = new Subject<{
-    senderId: number;
-    senderName: string;
+  readonly onGroupMessageReceived = new Subject<IncomingGroupMessage>();
+
+  readonly onFileMessageSent = new Subject<{
+    realId: number;
+    fileUrl: string;
+    messageType: string;
+  }>();
+
+  readonly onFileGroupMessageSent = new Subject<{
+    realId: number;
     groupId: number;
-    content: string;
-    sentAt: string;
+    fileUrl: string;
   }>();
 
   // ═══════════════════════════════════════════
@@ -151,8 +158,28 @@ export class SignalRService implements OnDestroy {
     // C# sends: SendAsync("ReceiveMessage", senderId, content, sentAt)
     hub.on(
       HubEvents.ReceiveMessage,
-      (senderId: number, content: string, sentAt: string) => {
-        this.onMessageReceived.next({ senderId, content, sentAt });
+      (
+        senderId: number,
+        content: string,
+        sentAt: string,
+        messageType?: string,
+        fileUrl?: string,
+        fileName?: string,
+        fileSize?: number,
+        fileType?: string,
+        id?: number,
+      ) => {
+        this.onMessageReceived.next({
+          senderId,
+          content,
+          sentAt,
+          messageType: (messageType as 'text' | 'image' | 'file') ?? 'text',
+          fileUrl,
+          fileName,
+          fileSize,
+          fileType,
+          id,
+        });
       },
     );
 
@@ -208,13 +235,30 @@ export class SignalRService implements OnDestroy {
 
     hub.on(
       HubEvents.ReceiveGroupMessage,
-      (senderId: number, groupId: number, content: string, sentAt: string) => {
+      (
+        senderId: number,
+        groupId: number,
+        content: string,
+        sentAt: string,
+        messageType?: string,
+        fileUrl?: string,
+        fileName?: string,
+        fileSize?: number,
+        fileType?: string,
+        id?: number,
+      ) => {
         this.onGroupMessageReceived.next({
           senderId,
           senderName: '',
           groupId,
           content,
           sentAt,
+          messageType: (messageType as 'text' | 'image' | 'file') ?? 'text',
+          fileUrl,
+          fileName,
+          fileSize,
+          fileType,
+          id,
         });
       },
     );
@@ -248,6 +292,25 @@ export class SignalRService implements OnDestroy {
       HubEvents.GroupDeleted,
       (data: { groupId: number; deletedBy: number }) => {
         this.onGroupDeleted.next(data);
+      },
+    );
+
+    hub.on(
+      HubEvents.FileMessageSent,
+      (data: { realId: number; fileUrl: string; messageType: string }) => {
+        this.onFileMessageSent.next(data);
+      },
+    );
+
+    hub.on(
+      HubEvents.FileGroupMessageSent,
+      (data: {
+        realId: number;
+        groupId: number;
+        fileUrl: string;
+        messageType: string;
+      }) => {
+        this.onFileGroupMessageSent.next(data);
       },
     );
   }
@@ -378,6 +441,47 @@ export class SignalRService implements OnDestroy {
     await this.invoke(HubEvents.DeleteGroupAsync, groupId.toString());
   }
 
+  async sendFileMessage(
+    receiverUserId: number,
+    messageType: 'image' | 'file',
+    fileUrl: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+  ): Promise<void> {
+    await this.invoke(
+      HubEvents.SendFileMessage,
+      receiverUserId.toString(), // hub expects string — matches your convention
+      messageType,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+    );
+  }
+
+  // Hub signature: SendGroupFileMessage(string groupId, string messageType,
+  //                                     string fileUrl, string fileName,
+  //                                     long fileSize, string fileType)
+
+  async sendGroupFileMessage(
+    groupId: number,
+    messageType: 'image' | 'file',
+    fileUrl: string,
+    fileName: string,
+    fileSize: number,
+    fileType: string,
+  ): Promise<void> {
+    await this.invoke(
+      HubEvents.SendGroupFileMessage,
+      groupId.toString(), // hub expects string — matches your convention
+      messageType,
+      fileUrl,
+      fileName,
+      fileSize,
+      fileType,
+    );
+  }
   // ═══════════════════════════════════════════
   // 🧹 CLEANUP
   // ═══════════════════════════════════════════

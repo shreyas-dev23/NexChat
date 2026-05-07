@@ -1,9 +1,13 @@
 import { NgModule } from '@angular/core';
 import {
   AlertTriangle,
+  ArrowDown,
   ChevronRight,
   LogOut,
   LucideAngularModule,
+  Paperclip,
+  SearchX,
+  SearchXIcon,
   Settings,
   Shield,
   Trash2,
@@ -56,6 +60,9 @@ import {
       Trash2,
       ChevronRight,
       AlertTriangle,
+      SearchX,
+      ArrowDown,
+      Paperclip,
     }),
   ],
   exports: [

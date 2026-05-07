@@ -39,7 +39,16 @@ export class ChatService {
   invalidateConversations(): void {
     this.conversations$ = null;
   }
-  getChatHistory(userId: number): Observable<Message[]> {
+  getChatHistory(
+    userId: number,
+    page: number = 1,
+    pageSize: number = 50,
+    beforeId?: number,
+  ): Observable<Message[]> {
+    let params: any = { page, pageSize };
+    if (beforeId !== undefined) {
+      params.beforeId = beforeId;
+    }
     return this.http
       .get<Message[]>(`${this.baseUrl}/history/${userId}`)
       .pipe(catchError(this.handleError));
@@ -87,13 +96,16 @@ export class ChatService {
     groupId: number,
     page: number = 1,
     pageSize: number = 50,
+    beforeId?: number,
   ): Observable<any[]> {
+    let params: any = { page, pageSize };
+
+    if (beforeId !== undefined) {
+      params.beforeId = beforeId;
+    }
     return this.http
       .get<any[]>(`${environment.apiUrl}/groups/${groupId}/messages`, {
-        params: {
-          page: page.toString(),
-          pageSize: pageSize.toString(),
-        },
+        params,
       })
       .pipe(catchError(this.handleError));
   }

@@ -1597,3 +1597,301 @@ group-header-btn:hover {
 .search-results::-webkit-scrollbar-track {
   background: transparent;
 }
+.search-results::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-dark);
+  border-radius: var(--radius-pill);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-lg) var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-xl) var(--space-md);
+  text-align: center;
+}
+
+.empty-state lucide-icon {
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-xxs);
+}
+
+.empty-state p {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.empty-state small {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-count {
+  padding: var(--space-xxs) var(--space-md);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-tertiary);
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+  letter-spacing: 0.02em;
+}
+
+.search-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+.search-result-item:hover {
+  background-color: var(--color-bg-tertiary);
+}
+.search-result-item:active {
+  background-color: var(--color-bg-secondary);
+}
+.result-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.result-sender {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-date {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.result-content {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  line-height: var(--leading-normal);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.result-content mark {
+  background-color: var(--color-primary-light);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0 2px;
+  font-weight: var(--weight-semibold);
+}
+
+.result-time {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════
+   ⏳ LOADING OLDER MESSAGES
+   ═══════════════════════════════════════════ */
+
+.loading-older {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  position: sticky;
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--color-chat-bg) 0%,
+    var(--color-chat-bg) 70%,
+    transparent 100%
+  );
+  z-index: var(--z-sticky);
+}
+
+.loading-older .spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   📍 NO MORE MESSAGES
+   ═══════════════════════════════════════════ */
+
+.no-more-messages {
+  text-align: center;
+  padding: var(--space-md);
+  margin-bottom: var(--space-xs);
+}
+
+.divider-text {
+  display: inline-block;
+  padding: var(--space-xxs) var(--space-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: var(--weight-semibold);
+}
+
+/* ── New Message Badge on Jump Button ── */
+.new-msg-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: var(--color-error);
+  color: var(--color-text-inverse);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  padding: 2px var(--space-xxs);
+  border-radius: var(--radius-pill);
+  min-width: 18px;
+  text-align: center;
+  border: 2px solid var(--color-white);
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════
+   📜 MESSAGES CONTAINER
+   ═══════════════════════════════════════════ */
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  position: relative;
+  scroll-behavior: smooth;
+  background-color: var(--color-chat-bg);
+
+  /* Scroll performance */
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Scrollbar */
+.messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-dark);
+  border-radius: var(--radius-pill);
+}
+
+.messages::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-tertiary);
+}
+/* ═══════════════════════════════════════════
+   ⬇️ JUMP TO BOTTOM BUTTON (WeChat Style)
+   ═══════════════════════════════════════════ */
+
+.btn-jump-to-bottom {
+  position: absolute;
+  bottom: calc(var(--input-bar-height) + var(--space-md));
+  right: var(--space-md);
+
+  /* Size */
+  width: 36px;
+  height: 36px;
+
+  /* WeChat Style — White with shadow */
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+
+  /* Layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  /* Icon color */
+  color: var(--color-text-secondary);
+
+  /* Animation & transition */
+  animation: slideUp var(--transition-base);
+  transition: all var(--transition-fast);
+  z-index: var(--z-dropdown);
+}
+
+.btn-jump-to-bottom:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.btn-jump-to-bottom:active {
+  transform: scale(0.93);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Unread Badge on Button ── */
+.new-msg-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+
+  /* Size */
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-xxs);
+
+  /* WeChat Green badge */
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: 2px solid var(--color-white);
+  border-radius: var(--radius-pill);
+
+  /* Text */
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  line-height: 14px;
+  text-align: center;
+}
